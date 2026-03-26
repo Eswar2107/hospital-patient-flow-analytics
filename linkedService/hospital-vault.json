@@ -1,0 +1,11 @@
+{
+	"name": "hospital-vault",
+	"type": "Microsoft.DataFactory/factories/linkedservices",
+	"properties": {
+		"annotations": [],
+		"type": "AzureKeyVault",
+		"typeProperties": {
+			"baseUrl": "https://hospitalvault21.vault.azure.net/"
+		}
+	}
+}

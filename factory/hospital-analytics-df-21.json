@@ -1,0 +1,9 @@
+{
+	"name": "hospital-analytics-df-21",
+	"location": "centralindia",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "925642eb-23d9-4fd3-ab37-7e15f3093c72",
+		"tenantId": "8e34f429-1bef-49aa-91c7-a4aad341eb33"
+	}
+}
