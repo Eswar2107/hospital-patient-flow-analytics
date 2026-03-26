@@ -1,0 +1,373 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"workspaceName": {
+			"type": "string",
+			"metadata": "Workspace name",
+			"defaultValue": "hospitalsynapse21"
+		},
+		"hospitalsynapse21-WorkspaceDefaultSqlServer_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'hospitalsynapse21-WorkspaceDefaultSqlServer'",
+			"defaultValue": "Integrated Security=False;Encrypt=True;Connection Timeout=30;Data Source=tcp:hospitalsynapse21.sql.azuresynapse.net,1433;Initial Catalog=@{linkedService().DBName}"
+		},
+		"storagehospital_accountKey": {
+			"type": "secureString",
+			"metadata": "Secure string for 'accountKey' of 'storagehospital'"
+		},
+		"hospital-vault_properties_typeProperties_baseUrl": {
+			"type": "string",
+			"defaultValue": "https://hospitalvault21.vault.azure.net/"
+		},
+		"hospitalsynapse21-WorkspaceDefaultStorage_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "https://hospitalanalytics21.dfs.core.windows.net"
+		},
+		"storagehospital_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "https://hospitalanalytics21.dfs.core.windows.net/"
+		}
+	},
+	"variables": {
+		"workspaceId": "[concat('Microsoft.Synapse/workspaces/', parameters('workspaceName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('workspaceName'), '/pipeline1')]",
+			"type": "Microsoft.Synapse/workspaces/pipelines",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"activities": [
+					{
+						"name": "Get Metadata1",
+						"type": "GetMetadata",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataset": {
+								"referenceName": "Parquet1",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"fieldList": [
+								"childItems"
+							],
+							"storeSettings": {
+								"type": "AzureBlobFSReadSettings",
+								"recursive": true,
+								"enablePartitionDiscovery": false
+							},
+							"formatSettings": {
+								"type": "ParquetReadSettings"
+							}
+						}
+					},
+					{
+						"name": "If Condition1",
+						"type": "IfCondition",
+						"dependsOn": [
+							{
+								"activity": "Get Metadata1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"expression": {
+								"value": "@greaterOrEquals(length(activity('Get Metadata1').output.childItems),5)",
+								"type": "Expression"
+							},
+							"ifTrueActivities": [
+								{
+									"name": "Notebook1",
+									"type": "DatabricksNotebook",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"notebookPath": "/Users/poojakarthikeyan1113@gmail.com/gold"
+									},
+									"linkedServiceName": {
+										"referenceName": "Hospitaldatabricks",
+										"type": "LinkedServiceReference"
+									}
+								}
+							]
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"annotations": [],
+				"lastPublishTime": "2026-03-26T12:12:56Z"
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/datasets/Parquet1')]",
+				"[concat(variables('workspaceId'), '/linkedServices/Hospitaldatabricks')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/Parquet1')]",
+			"type": "Microsoft.Synapse/workspaces/datasets",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "storagehospital",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "Parquet",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"folderPath": "patient_flow",
+						"fileSystem": "silver"
+					},
+					"compressionCodec": "snappy"
+				},
+				"schema": [
+					{
+						"name": "patient_id",
+						"type": "UTF8"
+					},
+					{
+						"name": "gender",
+						"type": "UTF8"
+					},
+					{
+						"name": "age",
+						"type": "INT32"
+					},
+					{
+						"name": "department",
+						"type": "UTF8"
+					},
+					{
+						"name": "admission_time",
+						"type": "INT96"
+					},
+					{
+						"name": "discharge_time",
+						"type": "INT96"
+					},
+					{
+						"name": "bed_id",
+						"type": "INT32"
+					},
+					{
+						"name": "hospital_id",
+						"type": "INT32"
+					}
+				]
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/linkedServices/storagehospital')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/Hospitaldatabricks')]",
+			"type": "Microsoft.Synapse/workspaces/linkedServices",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"annotations": [],
+				"type": "AzureDatabricks",
+				"typeProperties": {
+					"domain": "https://adb-7405612377847931.11.azuredatabricks.net",
+					"accessToken": {
+						"type": "AzureKeyVaultSecret",
+						"store": {
+							"referenceName": "hospital-vault",
+							"type": "LinkedServiceReference"
+						},
+						"secretName": "databricksconn"
+					},
+					"existingClusterId": "0326-073933-nfkv8haz"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/linkedServices/hospital-vault')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/hospital-vault')]",
+			"type": "Microsoft.Synapse/workspaces/linkedServices",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"annotations": [],
+				"type": "AzureKeyVault",
+				"typeProperties": {
+					"baseUrl": "[parameters('hospital-vault_properties_typeProperties_baseUrl')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/hospitalsynapse21-WorkspaceDefaultSqlServer')]",
+			"type": "Microsoft.Synapse/workspaces/linkedServices",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"parameters": {
+					"DBName": {
+						"type": "String"
+					}
+				},
+				"annotations": [],
+				"type": "AzureSqlDW",
+				"typeProperties": {
+					"connectionString": "[parameters('hospitalsynapse21-WorkspaceDefaultSqlServer_connectionString')]"
+				},
+				"connectVia": {
+					"referenceName": "AutoResolveIntegrationRuntime",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/integrationRuntimes/AutoResolveIntegrationRuntime')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/hospitalsynapse21-WorkspaceDefaultStorage')]",
+			"type": "Microsoft.Synapse/workspaces/linkedServices",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"annotations": [],
+				"type": "AzureBlobFS",
+				"typeProperties": {
+					"url": "[parameters('hospitalsynapse21-WorkspaceDefaultStorage_properties_typeProperties_url')]"
+				},
+				"connectVia": {
+					"referenceName": "AutoResolveIntegrationRuntime",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/integrationRuntimes/AutoResolveIntegrationRuntime')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/storagehospital')]",
+			"type": "Microsoft.Synapse/workspaces/linkedServices",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"annotations": [],
+				"type": "AzureBlobFS",
+				"typeProperties": {
+					"url": "[parameters('storagehospital_properties_typeProperties_url')]",
+					"accountKey": {
+						"type": "SecureString",
+						"value": "[parameters('storagehospital_accountKey')]"
+					}
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/gold-trigger')]",
+			"type": "Microsoft.Synapse/workspaces/triggers",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"annotations": [],
+				"runtimeState": "Started",
+				"pipelines": [
+					{
+						"pipelineReference": {
+							"referenceName": "pipeline1",
+							"type": "PipelineReference"
+						},
+						"parameters": {}
+					}
+				],
+				"type": "ScheduleTrigger",
+				"typeProperties": {
+					"recurrence": {
+						"frequency": "Minute",
+						"interval": 5,
+						"startTime": "2026-03-26T12:12:00",
+						"timeZone": "Romance Standard Time"
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/pipelines/pipeline1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/AutoResolveIntegrationRuntime')]",
+			"type": "Microsoft.Synapse/workspaces/integrationRuntimes",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"type": "Managed",
+				"typeProperties": {
+					"computeProperties": {
+						"location": "AutoResolve",
+						"dataFlowProperties": {
+							"computeType": "General",
+							"coreCount": 8,
+							"timeToLive": 0
+						}
+					}
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/WorkspaceSystemIdentity')]",
+			"type": "Microsoft.Synapse/workspaces/credentials",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"type": "ManagedIdentity",
+				"typeProperties": {}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/SQL script 1')]",
+			"type": "Microsoft.Synapse/workspaces/sqlscripts",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"content": {
+					"query": "CREATE MASTER KEY ENCRYPTION BY PASSWORD = 'Eswar@2107';\n\n-- CREATING A SCOPE\nCREATE DATABASE SCOPED CREDENTIAL storage_credential\nWITH IDENTITY = 'Managed Identity';\n\n-- DEFINING DATA SOURCE\nCREATE EXTERNAL DATA SOURCE gold_data_source\nWITH (\n    TYPE = HADOOP,\n    LOCATION = 'abfss://gold@hospitalanalytics21.dfs.core.windows.net/',\n    CREDENTIAL = storage_credential\n);\n\n--DEFINE FORMAT\nCREATE EXTERNAL FILE FORMAT ParquetFileFormat\nWITH (\n    FORMAT_TYPE = PARQUET\n);\n\n--CREATE TABLES\n--PATIENT DIMENSION\nCREATE EXTERNAL TABLE dbo.dim_patient (\n    patient_id VARCHAR(50),\n    gender VARCHAR(10),\n    age INT,\n    effective_from DATETIME2,\n    surrogate_key BIGINT,\n    effective_to DATETIME2,\n    is_current BIT\n)\nWITH (\n    LOCATION = 'dim_patient/',\n    DATA_SOURCE = gold_data_source,\n    FILE_FORMAT = ParquetFileFormat\n);\n\n--DEPARTMENT DIMENSION\nCREATE EXTERNAL TABLE dbo.dim_department (\n    surrogate_key BIGINT,\n    department NVARCHAR(200),\n    hospital_id INT\n)\nWITH (\n    LOCATION = 'dim_department/',\n    DATA_SOURCE = gold_data_source,\n    FILE_FORMAT = ParquetFileFormat\n);\n\n--FACT TABLE\nCREATE EXTERNAL TABLE dbo.fact_patient_flow (\n    fact_id BIGINT,\n    patient_sk BIGINT,\n    department_sk BIGINT,\n    admission_time DATETIME2,\n    discharge_time DATETIME2,\n    admission_date DATE,\n    length_of_stay_hours FLOAT,\n    is_currently_admitted BIT,\n    bed_id INT,\n    event_ingestion_time DATETIME2\n)\nWITH (\n    LOCATION = 'fact_patient_flow/',\n    DATA_SOURCE = gold_data_source,\n    FILE_FORMAT = ParquetFileFormat\n);\n\nSELECT * FROM dbo.fact_patient_flow;",
+					"metadata": {
+						"language": "sql"
+					},
+					"currentConnection": {
+						"databaseName": "hospitalproject21",
+						"poolName": "hospitalproject21"
+					},
+					"resultLimit": 5000
+				},
+				"type": "SqlQuery"
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/hospitalproject21')]",
+			"type": "Microsoft.Synapse/workspaces/sqlPools",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"collation": "SQL_Latin1_General_CP1_CI_AS",
+				"maxSizeBytes": 263882790666240,
+				"annotations": []
+			},
+			"dependsOn": [],
+			"location": "centralindia"
+		}
+	]
+}

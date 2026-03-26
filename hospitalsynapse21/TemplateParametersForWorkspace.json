@@ -1,0 +1,24 @@
+{
+	"$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"workspaceName": {
+			"value": "hospitalsynapse21"
+		},
+		"hospitalsynapse21-WorkspaceDefaultSqlServer_connectionString": {
+			"value": "Integrated Security=False;Encrypt=True;Connection Timeout=30;Data Source=tcp:hospitalsynapse21.sql.azuresynapse.net,1433;Initial Catalog=@{linkedService().DBName}"
+		},
+		"storagehospital_accountKey": {
+			"value": ""
+		},
+		"hospital-vault_properties_typeProperties_baseUrl": {
+			"value": "https://hospitalvault21.vault.azure.net/"
+		},
+		"hospitalsynapse21-WorkspaceDefaultStorage_properties_typeProperties_url": {
+			"value": "https://hospitalanalytics21.dfs.core.windows.net"
+		},
+		"storagehospital_properties_typeProperties_url": {
+			"value": "https://hospitalanalytics21.dfs.core.windows.net/"
+		}
+	}
+}
