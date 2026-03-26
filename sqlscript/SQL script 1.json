@@ -1,0 +1,17 @@
+{
+	"name": "SQL script 1",
+	"properties": {
+		"content": {
+			"query": "CREATE MASTER KEY ENCRYPTION BY PASSWORD = 'Eswar@2107';\n\n-- CREATING A SCOPE\nCREATE DATABASE SCOPED CREDENTIAL storage_credential\nWITH IDENTITY = 'Managed Identity';\n\n-- DEFINING DATA SOURCE\nCREATE EXTERNAL DATA SOURCE gold_data_source\nWITH (\n    TYPE = HADOOP,\n    LOCATION = 'abfss://gold@hospitalanalytics21.dfs.core.windows.net/',\n    CREDENTIAL = storage_credential\n);\n\n--DEFINE FORMAT\nCREATE EXTERNAL FILE FORMAT ParquetFileFormat\nWITH (\n    FORMAT_TYPE = PARQUET\n);\n\n--CREATE TABLES\n--PATIENT DIMENSION\nCREATE EXTERNAL TABLE dbo.dim_patient (\n    patient_id VARCHAR(50),\n    gender VARCHAR(10),\n    age INT,\n    effective_from DATETIME2,\n    surrogate_key BIGINT,\n    effective_to DATETIME2,\n    is_current BIT\n)\nWITH (\n    LOCATION = 'dim_patient/',\n    DATA_SOURCE = gold_data_source,\n    FILE_FORMAT = ParquetFileFormat\n);\n\n--DEPARTMENT DIMENSION\nCREATE EXTERNAL TABLE dbo.dim_department (\n    surrogate_key BIGINT,\n    department NVARCHAR(200),\n    hospital_id INT\n)\nWITH (\n    LOCATION = 'dim_department/',\n    DATA_SOURCE = gold_data_source,\n    FILE_FORMAT = ParquetFileFormat\n);\n\n--FACT TABLE\nCREATE EXTERNAL TABLE dbo.fact_patient_flow (\n    fact_id BIGINT,\n    patient_sk BIGINT,\n    department_sk BIGINT,\n    admission_time DATETIME2,\n    discharge_time DATETIME2,\n    admission_date DATE,\n    length_of_stay_hours FLOAT,\n    is_currently_admitted BIT,\n    bed_id INT,\n    event_ingestion_time DATETIME2\n)\nWITH (\n    LOCATION = 'fact_patient_flow/',\n    DATA_SOURCE = gold_data_source,\n    FILE_FORMAT = ParquetFileFormat\n);\n\nSELECT * FROM dbo.fact_patient_flow;",
+			"metadata": {
+				"language": "sql"
+			},
+			"currentConnection": {
+				"databaseName": "hospitalproject21",
+				"poolName": "hospitalproject21"
+			},
+			"resultLimit": 5000
+		},
+		"type": "SqlQuery"
+	}
+}
